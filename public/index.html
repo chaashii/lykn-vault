@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LYKN Vault — Top Spender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span class="logo">LYKN Vault</span>
+        <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.3px">Top Spender</span>
+      </div>
+      <a href="/admin.html" class="admin-link">Admin →</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="stats" id="stats">
+      <div class="stat">
+        <div class="stat-label">Events per Member</div>
+        <div id="s-count-members" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Total Events</div>
+        <div class="stat-value" id="s-total">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Highest #1 Spender</div>
+        <div class="stat-value" id="s-highest" style="color:var(--nut)">—</div>
+        <div class="stat-sub" id="s-highest-sub"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Members Featured</div>
+        <div class="stat-value" id="s-members">—</div>
+        <div class="stat-sub" id="s-members-sub"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Latest Event</div>
+        <div class="stat-value" id="s-latest" style="font-size:18px;letter-spacing:-.3px">—</div>
+        <div class="stat-sub" id="s-latest-sub"></div>
+      </div>
+    </div>
+
+    <div class="sh">
+      <h2 class="sh-title">All Events</h2>
+      <div class="filters" id="filters">
+        <button class="fb on" data-m="all">All</button>
+        <button class="fb" data-m="WILLIAM">WILLIAM</button>
+        <button class="fb" data-m="LEGO">LEGO</button>
+        <button class="fb" data-m="NUT">NUT</button>
+        <button class="fb" data-m="HONG">HONG</button>
+        <button class="fb" data-m="TUI">TUI</button>
+        <button class="fb" data-m="NUTHONG">NUTHONG</button>
+
+      </div>
+    </div>
+
+    <div class="grid" id="grid">
+      <div class="state-msg">Loading...</div>
+    </div>
+  </main>
+
+  <footer>ข้อมูลจาก official · เพื่อการอ้างอิงสำหรับแฟนคลับเท่านั้น</footer>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <button class="modal-close" id="mClose">✕</button>
+        <div id="mTag"></div>
+        <div class="modal-title" id="mTitle"></div>
+        <div class="modal-meta" id="mMeta"></div>
+      </div>
+      <div class="modal-body" id="mBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    const MEMBER_ORDER = ['WILLIAM', 'LEGO', 'NUT', 'HONG', 'TUI', 'NUTHONG'];
+    let allEvents = [];
+    let activeFilter = 'all';
+
+    function baht(n) { return '฿' + Number(n).toLocaleString('th-TH'); }
+
+    function formatDateRange(start, end) {
+      const s = new Date(start);
+      const e = end ? new Date(end) : null;
+      const mo = s.toLocaleDateString('en-GB', { month: 'short' });
+      const yr = s.getFullYear();
+      if (!e || s.toDateString() === e.toDateString()) {
+        return `${s.getDate()} ${mo} ${yr}`;
+      }
+      if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+        return `${s.getDate()}–${e.getDate()} ${mo} ${yr}`;
+      }
+      const emo = e.toLocaleDateString('en-GB', { month: 'short' });
+      return `${s.getDate()} ${mo} – ${e.getDate()} ${emo} ${e.getFullYear()}`;
+    }
+
+    // ── Fetch ─────────────────────────────────────────────────────
+    async function loadEvents() {
+      try {
+        const res = await fetch('/api/events');
+        if (!res.ok) throw new Error('API error');
+        const { events, stats } = await res.json();
+        allEvents = events || [];
+        renderStats(stats);
+        renderCards(activeFilter);
+        renderFilterTopSpender(stats)
+      } catch (e) {
+        document.getElementById('grid').innerHTML =
+          '<div class="state-msg">ไม่สามารถโหลดข้อมูลได้ — ตรวจสอบว่า server กำลังทำงานอยู่</div>';
+      }
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────
+    function memberColor(m) {
+      return { NUT: 'var(--nut)', TUI: 'var(--tui)', NUTHONG: 'var(--nuthong)', LEGO: 'var(--lego)', WILLIAM: 'var(--william)', HONG: 'var(--hong)' }[m] || 'var(--text)';
+    }
+
+    function renderFilterTopSpender(s) {
+      if (!s?.count_each_member?.length) return;
+
+      // Stat card
+      const container = document.getElementById('s-count-members');
+      const sorted = [...s.count_each_member].sort((a, b) => {
+        const ai = MEMBER_ORDER.indexOf(a.member_name);
+        const bi = MEMBER_ORDER.indexOf(b.member_name);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+      container.innerHTML = sorted.map(m => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:${memberColor(m.member_name)}">${m.member_name}</span>
+          <span style="font-size:13px;font-weight:800;letter-spacing:-.3px">${m.count}</span>
+        </div>`).join('');
+
+      // Filter buttons — rebuild with counts then re-attach listeners
+      const countMap = Object.fromEntries(s.count_each_member.map(m => [m.member_name, m.count]));
+      const filtersEl = document.getElementById('filters');
+      const active = activeFilter;
+      const totalCount = s.count_each_member.reduce((sum, m) => sum + m.count, 0);
+      filtersEl.innerHTML = `<button class="fb${active === 'all' ? ' on' : ''}" data-m="all">All <span style="opacity:.6;font-weight:600">${totalCount}</span></button>` +
+        sorted.map(m => `<button class="fb${active === m.member_name ? ' on' : ''}" data-m="${m.member_name}">
+          ${m.member_name} <span style="opacity:.6;font-weight:600">${m.count}</span>
+        </button>`).join('');
+      attachFilterListeners();
+    }
+
+    function attachFilterListeners() {
+      document.querySelectorAll('.fb').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.fb').forEach(b => b.classList.remove('on'));
+          btn.classList.add('on');
+          activeFilter = btn.dataset.m;
+          renderCards(activeFilter);
+        });
+      });
+    }
+
+    function renderStats(s) {
+      if (!s) return;
+      document.getElementById('s-total').textContent = s.total_events ?? '—';
+
+      const hEl = document.getElementById('s-highest');
+      hEl.textContent = s.highest_amount ? baht(s.highest_amount) : '—';
+      hEl.style.color = memberColor(s.highest_member);
+      document.getElementById('s-highest-sub').textContent =
+        s.highest_member ? `${s.highest_member} · ${s.highest_event}` : '';
+
+      document.getElementById('s-members').textContent = s.members_count ?? '—';
+      document.getElementById('s-members-sub').textContent = (s.members || []).join(' · ');
+
+      const lEl = document.getElementById('s-latest');
+      lEl.textContent = s.latest_event_date || '—';
+      lEl.style.color = memberColor(s.latest_member);
+      document.getElementById('s-latest-sub').textContent =
+        s.latest_member ? `${s.latest_member} · ${s.latest_event_title}` : '';
+    }
+
+    // ── Cards ─────────────────────────────────────────────────────
+    function renderCards(filter) {
+      const grid = document.getElementById('grid');
+      const list = filter === 'all' ? allEvents : allEvents.filter(e => e.member === filter);
+
+      if (!list.length) {
+        grid.innerHTML = '<div class="state-msg">ยังไม่มีอีเวนต์</div>';
+        return;
+      }
+
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+
+      grid.innerHTML = list.map(ev => {
+        const topSec = ev.sections?.find(s => s.type === 'spender');
+        const top = topSec?.entries?.[0];
+        const min = topSec?.entries?.at(-1);
+        const checkDate = ev.end_date || ev.date;
+        const isPast = new Date(checkDate) < today;
+        const dateDisplay = ev.start_date
+          ? formatDateRange(ev.start_date, ev.end_date)
+          : ev.period || ev.date;
+        const imgInner = ev.img
+          ? `<img class="card-img" src="/${ev.img}" alt="${ev.title}" loading="lazy">`
+          : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;font-size:40px">🎤</div>`;
+        const imgHTML = `<div style="position:relative">
+          ${imgInner}
+          ${isPast ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">
+            <span style="color:#fff;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:rgba(0,0,0,.4);padding:5px 12px;border-radius:99px;border:1.5px solid rgba(255,255,255,.3)">Event Ended</span>
+          </div>` : ''}
+        </div>`;
+
+        return `<div class="card" data-id="${ev.id}">
+      ${imgHTML}
+      <div class="card-body">
+        <span class="tag" data-m="${ev.member}">${ev.hashtag}</span>
+        <div class="card-title">${ev.title}</div>
+        <div class="card-date" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span>${dateDisplay}</span>
+          ${ev.period ? `<span style="opacity:.6"> ${ev.period}</span>` : ''}
+        </div>
+        ${top ? `
+        <div class="top1" data-m="${ev.member}">
+          <span class="top1-crown">🥇</span>
+          <div class="top1-info">
+            <div class="top1-phone">${top.phone}</div>
+            <div class="top1-amt" data-m="${ev.member}">${baht(top.amount)}</div>
+          </div>
+          ${min && min.rank !== top.rank ? `
+          <div style="border-left:1px solid rgba(0,0,0,.08);padding-left:10px;margin-left:4px;flex-shrink:0">
+            <div class="top1-phone">Min (#${min.rank})</div>
+            <div style="font-size:14px;font-weight:800;color:var(--muted);letter-spacing:-.3px">${baht(min.amount)}</div>
+          </div>` : ''}
+        </div>` : ''}
+        <button class="card-cta">ดู Leaderboard ทั้งหมด →</button>
+      </div>
+    </div>`;
+      }).join('');
+
+      grid.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => {
+          const ev = allEvents.find(e => e.id === Number(card.dataset.id));
+          if (ev) openModal(ev);
+        });
+      });
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────
+    function openModal(ev) {
+      document.getElementById('mTag').innerHTML =
+        `<span class="tag" data-m="${ev.member}" style="margin-bottom:6px">${ev.hashtag}</span>`;
+      document.getElementById('mTitle').textContent = ev.title;
+      document.getElementById('mMeta').textContent = `${ev.start_date} · ร่วมสนุกได้ตั้งแต่: ${ev.period}`;
+
+      const body = document.getElementById('mBody');
+      const imgHTML = ev.img
+        ? `<img class="modal-img" src="/${ev.img}" alt="${ev.title}">`
+        : '';
+      body.innerHTML = imgHTML;
+
+      (ev.sections || []).forEach((sec, i) => {
+        body.insertAdjacentHTML('beforeend',
+          i === 0
+            ? `<div class="lb-head">${sec.name}</div>`
+            : `<div class="lb-divider">${sec.name}</div>`
+        );
+
+        if (sec.type === 'lucky') {
+          const items = (sec.entries || []).map(e => `
+        <div class="lucky-item">
+          <span class="lucky-num">${e.rank}</span>
+          <div>
+            <div style="font-size:12px;font-weight:700">${e.name}</div>
+            <div style="font-size:11px;color:var(--muted)">${e.phone}</div>
+          </div>
+        </div>`).join('');
+          body.insertAdjacentHTML('beforeend', `<div class="lucky-grid">${items}</div>`);
+        } else {
+          const rows = (sec.entries || []).map(e => {
+            const rClass = e.rank <= 3 ? ` r${e.rank}` : '';
+            const rankHTML = MEDAL[e.rank]
+              ? `<span class="lb-rank medal">${MEDAL[e.rank]}</span>`
+              : `<span class="lb-rank">${e.rank}</span>`;
+            return `<div class="lb-row${rClass}">
+          ${rankHTML}
+          <span class="lb-phone">${e.phone}</span>
+          <span class="lb-amt" data-m="${ev.member}">${baht(e.amount)}</span>
+        </div>`;
+          }).join('');
+          body.insertAdjacentHTML('beforeend', `<div class="lb">${rows}</div>`);
+        }
+      });
+
+      document.getElementById('overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // ── Filters ───────────────────────────────────────────────────
+    attachFilterListeners();
+
+    document.getElementById('mClose').addEventListener('click', closeModal);
+    document.getElementById('overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('overlay')) closeModal();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // ── Init ──────────────────────────────────────────────────────
+    loadEvents();
+  </script>
+</body>
+
+</html>

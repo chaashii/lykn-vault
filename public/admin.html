@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — LYKN × Mela</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #F7F7F8;
+      --card: #fff;
+      --text: #0D0D0D;
+      --muted: #71717A;
+      --border: #E4E4E7;
+      --r: 14px;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 4px 12px rgba(0, 0, 0, .04);
+      --nut: #2563EB;
+      --tui: #7C3AED;
+      --nuthong: #DB2777;
+      --lego: #18181B;
+      --danger: #DC2626;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    header {
+      background: rgba(255, 255, 255, .92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: -.5px;
+    }
+
+    .logo em {
+      font-style: normal;
+      color: var(--nut);
+    }
+
+    .pill {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      background: var(--text);
+      color: #fff;
+      padding: 3px 9px;
+      border-radius: 99px;
+    }
+
+    .back-link {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      transition: all .12s;
+    }
+
+    .back-link:hover {
+      border-color: #aaa;
+      color: var(--text);
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -.4px;
+      margin-bottom: 18px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    /* ── Form elements ── */
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      transition: border-color .12s;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--nut);
+      background: #fff;
+    }
+
+    .field select {
+      cursor: pointer;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ── Photo upload ── */
+    .photo-upload {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .12s, background .12s;
+      position: relative;
+    }
+
+    .photo-upload:hover {
+      border-color: var(--nut);
+      background: #EFF6FF;
+    }
+
+    .photo-upload input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .photo-upload-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .photo-upload-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .photo-preview {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    /* ── Spender table ── */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: 0 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th:first-child {
+      width: 40px;
+      text-align: center;
+    }
+
+    td {
+      padding: 5px 8px;
+      vertical-align: middle;
+    }
+
+    td:first-child {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    td input {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 7px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      transition: border-color .12s;
+      outline: none;
+    }
+
+    td input:focus {
+      border-color: var(--nut);
+      background: #fff;
+    }
+
+    tr:nth-child(1) td:first-child {
+      color: #B45309;
+      font-size: 16px;
+    }
+
+    tr:nth-child(2) td:first-child {
+      color: #6B7280;
+      font-size: 16px;
+    }
+
+    tr:nth-child(3) td:first-child {
+      color: #92400E;
+      font-size: 16px;
+    }
+
+    /* ── Lucky Fan toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      background: var(--border);
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+
+    .toggle.on {
+      background: var(--nut);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 99px;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    }
+
+    .toggle.on::after {
+      transform: translateX(18px);
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 11px 22px;
+      border-radius: 10px;
+      border: none;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .12s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--text);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #27272A;
+    }
+
+    .btn-primary:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1.5px solid #FCA5A5;
+      padding: 7px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    .btn-danger:hover {
+      background: #FEF2F2;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--text);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+      transition: transform .25s ease;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error {
+      background: var(--danger);
+    }
+
+    /* ── Event list ── */
+    .event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .event-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .event-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--bg);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .event-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .event-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-name {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .event-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .event-tag[data-m="NUT"] {
+      background: #EFF6FF;
+      color: var(--nut);
+    }
+
+    .event-tag[data-m="TUI"] {
+      background: #F5F3FF;
+      color: var(--tui);
+    }
+
+    .event-tag[data-m="NUTHONG"] {
+      background: #FDF2F8;
+      color: var(--nuthong);
+    }
+
+    .event-tag[data-m="LEGO"] {
+      background: #F4F4F5;
+      color: var(--lego);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+
+    @media (max-width: 600px) {
+
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      main {
+        padding: 20px 14px 48px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="header-inner">
+      <span class="logo">LYKN<em>×</em>Mela</span>
+      <span class="pill">Admin</span>
+      <a href="/" class="back-link">← Back to site</a>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── ADD EVENT FORM ── -->
+    <div class="section-title">Add New Event</div>
+
+    <form id="eventForm" autocomplete="off">
+
+      <!-- Event details -->
+      <div class="card">
+        <div class="card-title">Event Details</div>
+
+        <div class="field">
+          <label>Event Title</label>
+          <input type="text" name="title" placeholder="e.g. A Carnival of Love with Tui" required>
+        </div>
+
+        <div class="grid-3">
+          <div class="field">
+            <label>Member</label>
+            <select name="member" id="memberSelect" required>
+              <option value="">— Select —</option>
+              <option value="NUT">NUT</option>
+              <option value="TUI">TUI</option>
+              <option value="NUTHONG">NUTHONG</option>
+              <option value="LEGO">LEGO</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Event Date</label>
+            <input type="text" name="date" placeholder="e.g. 26 Apr 2026" required>
+          </div>
+          <div class="field">
+            <label>Start Date</label>
+            <input type="text" name="start_date" placeholder="e.g. 3 Apr 2026">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label>End Date</label>
+            <input type="text" name="end_date" placeholder="e.g. 18 Apr 2026">
+          </div>
+          <div class="field">
+            <label>Period (legacy)</label>
+            <input type="text" name="period" placeholder="e.g. 3 – 18 Apr 2026">
+          </div>
+        </div>
+
+        <div class="field" id="hashtagField">
+          <label>Hashtag</label>
+          <input type="text" name="hashtag" id="hashtagInput" placeholder="#MELAxTUI">
+        </div>
+      </div>
+
+      <!-- Photo -->
+      <div class="card">
+        <div class="card-title">Result Photo</div>
+        <div class="photo-upload" id="photoUpload">
+          <input type="file" name="photo" id="photoInput" accept="image/*">
+          <div class="photo-upload-icon">📸</div>
+          <div class="photo-upload-text">Click to upload result photo</div>
+          <img class="photo-preview" id="photoPreview" alt="preview">
+        </div>
+      </div>
+
+      <!-- Top Spender -->
+      <div class="card">
+        <div class="card-title">
+          Top Spender Section
+          &nbsp;
+          <input type="text" id="sectionName" placeholder="Section name (e.g. TOP STUDIO)"
+            style="width:200px;display:inline-block;padding:5px 10px;font-size:12px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);font-family:inherit;font-weight:600;outline:none">
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Phone Number</th>
+                <th>Amount (฿)</th>
+              </tr>
+            </thead>
+            <tbody id="spenderRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Lucky Fan (optional) -->
+      <div class="card">
+        <div class="toggle-row">
+          <div class="toggle" id="luckyToggle"></div>
+          <span class="toggle-label">Lucky Fan Section</span>
+          <span style="font-size:12px;color:var(--muted)">(optional)</span>
+        </div>
+        <div id="luckySection" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Phone Number</th>
+                </tr>
+              </thead>
+              <tbody id="luckyRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submitBtn">
+        <span id="submitLabel">Add Event</span>
+      </button>
+
+    </form>
+
+    <hr class="divider">
+
+    <!-- ── EVENT LIST ── -->
+    <div class="section-title">Existing Events</div>
+    <div class="event-list" id="eventList">
+      <div style="color:var(--muted);font-size:13px">Loading...</div>
+    </div>
+
+  </main>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const HASHTAGS = { NUT: '#MELAxNUT', TUI: '#MELAxTUI', NUTHONG: '#MELAxNUTHONG', LEGO: '#MELAxLEGO' };
+
+    // ── Build table rows ──────────────────────────────────────────
+    function buildSpenderRows() {
+      const tbody = document.getElementById('spenderRows');
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+      tbody.innerHTML = Array.from({ length: 20 }, (_, i) => {
+        const rank = i + 1;
+        return `<tr>
+      <td>${medals[rank] ?? rank}</td>
+      <td><input type="text" placeholder="e.g. 091-079xxxx" data-sp-phone="${rank}"></td>
+      <td><input type="number" placeholder="e.g. 77420" min="0" data-sp-amount="${rank}"></td>
+    </tr>`;
+      }).join('');
+    }
+
+    function buildLuckyRows() {
+      const tbody = document.getElementById('luckyRows');
+      tbody.innerHTML = Array.from({ length: 10 }, (_, i) => {
+        const rank = i + 1;
+        return `<tr>
+      <td>${rank}</td>
+      <td><input type="text" placeholder="Name (masked)" data-lk-name="${rank}"></td>
+      <td><input type="text" placeholder="e.g. 062-369xxxx" data-lk-phone="${rank}"></td>
+    </tr>`;
+      }).join('');
+    }
+
+    // ── Auto-fill hashtag ─────────────────────────────────────────
+    document.getElementById('memberSelect').addEventListener('change', function () {
+      const ht = HASHTAGS[this.value] || '';
+      document.getElementById('hashtagInput').value = ht;
+    });
+
+    // ── Lucky Fan toggle ──────────────────────────────────────────
+    document.getElementById('luckyToggle').addEventListener('click', function () {
+      this.classList.toggle('on');
+      document.getElementById('luckySection').style.display =
+        this.classList.contains('on') ? 'block' : 'none';
+    });
+
+    // ── Photo preview ─────────────────────────────────────────────
+    document.getElementById('photoInput').addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) return;
+      const prev = document.getElementById('photoPreview');
+      prev.src = URL.createObjectURL(file);
+      prev.style.display = 'block';
+      document.querySelector('.photo-upload-icon').style.display = 'none';
+      document.querySelector('.photo-upload-text').textContent = file.name;
+    });
+
+    // ── Build sections JSON ───────────────────────────────────────
+    function buildSections() {
+      const sectionName = document.getElementById('sectionName').value.trim() || 'TOP STUDIO';
+
+      const spenderEntries = [];
+      for (let rank = 1; rank <= 20; rank++) {
+        const phone = document.querySelector(`[data-sp-phone="${rank}"]`)?.value.trim();
+        const amount = document.querySelector(`[data-sp-amount="${rank}"]`)?.value.trim();
+        if (phone && amount) {
+          spenderEntries.push({ rank, phone, amount: parseInt(amount, 10) });
+        }
+      }
+      if (!spenderEntries.length) return null;
+
+      const sections = [{ name: sectionName, type: 'spender', entries: spenderEntries }];
+
+      if (document.getElementById('luckyToggle').classList.contains('on')) {
+        const luckyEntries = [];
+        for (let rank = 1; rank <= 10; rank++) {
+          const name = document.querySelector(`[data-lk-name="${rank}"]`)?.value.trim();
+          const phone = document.querySelector(`[data-lk-phone="${rank}"]`)?.value.trim();
+          if (name && phone) {
+            luckyEntries.push({ rank, name, phone });
+          }
+        }
+        if (luckyEntries.length) {
+          sections.push({ name: 'LUCKY FAN', type: 'lucky', entries: luckyEntries });
+        }
+      }
+
+      return sections;
+    }
+
+    // ── Submit ────────────────────────────────────────────────────
+    document.getElementById('eventForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const sections = buildSections();
+      if (!sections) {
+        showToast('กรอกข้อมูล Top Spender อย่างน้อย 1 รายการ', true);
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      const label = document.getElementById('submitLabel');
+      btn.disabled = true;
+      label.textContent = 'Saving...';
+
+      const fd = new FormData(this);
+      fd.set('sections', JSON.stringify(sections));
+
+      try {
+        const res = await fetch('/api/events', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Server error');
+        }
+        showToast('เพิ่ม event เรียบร้อยแล้ว!');
+        this.reset();
+        document.getElementById('photoPreview').style.display = 'none';
+        document.querySelector('.photo-upload-icon').style.display = '';
+        document.querySelector('.photo-upload-text').textContent = 'Click to upload result photo';
+        document.getElementById('luckyToggle').classList.remove('on');
+        document.getElementById('luckySection').style.display = 'none';
+        buildSpenderRows();
+        buildLuckyRows();
+        loadEventList();
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+        label.textContent = 'Add Event';
+      }
+    });
+
+    // ── Load existing events ──────────────────────────────────────
+    async function loadEventList() {
+      const list = document.getElementById('eventList');
+      try {
+        const res = await fetch('/api/events');
+        const { events } = await res.json();
+
+        if (!events?.length) {
+          list.innerHTML = '<div style="color:var(--muted);font-size:13px">ยังไม่มีอีเวนต์</div>';
+          return;
+        }
+
+        list.innerHTML = events.map(ev => {
+          const thumbHTML = ev.img
+            ? `<div class="event-thumb"><img src="/${ev.img}" alt=""></div>`
+            : `<div class="event-thumb">🎤</div>`;
+          const top = ev.sections?.find(s => s.type === 'spender')?.entries?.[0];
+          const topAmt = top ? ` · #1: ฿${Number(top.amount).toLocaleString('th-TH')}` : '';
+
+          return `<div class="event-item">
+        ${thumbHTML}
+        <div class="event-info">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span class="event-tag" data-m="${ev.member}">${ev.hashtag}</span>
+          </div>
+          <div class="event-name">${ev.title}</div>
+          <div class="event-meta">${ev.date} · ${ev.period}${topAmt}</div>
+        </div>
+        <button class="btn btn-danger" onclick="deleteEvent(${ev.id}, this)">Delete</button>
+      </div>`;
+        }).join('');
+      } catch {
+        list.innerHTML = '<div style="color:var(--muted);font-size:13px">ไม่สามารถโหลดข้อมูลได้</div>';
+      }
+    }
+
+    async function deleteEvent(id, btn) {
+      if (!confirm('ลบ event นี้?')) return;
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        const res = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        showToast('ลบเรียบร้อยแล้ว');
+        loadEventList();
+      } catch {
+        showToast('ลบไม่สำเร็จ', true);
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+      }
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (isError ? ' error' : '');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────
+    buildSpenderRows();
+    buildLuckyRows();
+    loadEventList();
+  </script>
+</body>
+
+</html>
