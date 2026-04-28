@@ -595,6 +595,12 @@
           <div class="photo-upload-text">Click to upload result photo</div>
           <img class="photo-preview" id="photoPreview" alt="preview">
         </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Or Google Drive URL</span>
+          <input type="text" id="driveInput" placeholder="https://drive.google.com/file/d/..."
+            style="flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-family:inherit;font-size:13px;font-weight:500;outline:none">
+        </div>
+        <input type="hidden" name="img_url" id="imgUrlHidden">
       </div>
 
       <!-- Top Spender -->
@@ -705,9 +711,36 @@
     });
 
     // ── Photo preview ─────────────────────────────────────────────
+    function driveDirectUrl(url) {
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (m) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+      const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m2) return `https://lh3.googleusercontent.com/d/${m2[1]}`;
+      return url;
+    }
+
+    document.getElementById('driveInput').addEventListener('input', function () {
+      const direct = this.value.trim() ? driveDirectUrl(this.value.trim()) : '';
+      document.getElementById('imgUrlHidden').value = direct;
+      const prev = document.getElementById('photoPreview');
+      if (direct) {
+        prev.src = direct;
+        prev.style.display = 'block';
+        document.querySelector('.photo-upload-icon').style.display = 'none';
+        document.querySelector('.photo-upload-text').textContent = 'Using Google Drive image';
+      } else {
+        prev.style.display = 'none';
+        document.querySelector('.photo-upload-icon').style.display = '';
+        document.querySelector('.photo-upload-text').textContent = 'Click to upload result photo';
+      }
+    });
+
     document.getElementById('photoInput').addEventListener('change', function () {
       const file = this.files[0];
       if (!file) return;
+      // clear Drive input when file is chosen
+      document.getElementById('driveInput').value = '';
+      document.getElementById('imgUrlHidden').value = '';
       const prev = document.getElementById('photoPreview');
       prev.src = URL.createObjectURL(file);
       prev.style.display = 'block';
@@ -774,6 +807,8 @@
         }
         showToast('เพิ่ม event เรียบร้อยแล้ว!');
         this.reset();
+        document.getElementById('driveInput').value = '';
+        document.getElementById('imgUrlHidden').value = '';
         document.getElementById('photoPreview').style.display = 'none';
         document.querySelector('.photo-upload-icon').style.display = '';
         document.querySelector('.photo-upload-text').textContent = 'Click to upload result photo';
@@ -804,7 +839,7 @@
 
         list.innerHTML = events.map(ev => {
           const thumbHTML = ev.img
-            ? `<div class="event-thumb"><img src="/${ev.img}" alt=""></div>`
+            ? `<div class="event-thumb"><img src="${ev.img.startsWith('http') ? ev.img : '/' + ev.img}" alt=""></div>`
             : `<div class="event-thumb">🎤</div>`;
           const top = ev.sections?.find(s => s.type === 'spender')?.entries?.[0];
           const topAmt = top ? ` · #1: ฿${Number(top.amount).toLocaleString('th-TH')}` : '';

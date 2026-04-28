@@ -58,6 +58,7 @@ type Stats struct {
 	MembersCount     int               `json:"members_count"`
 	Members          []string          `json:"members"`
 	CountEachMember  []CountEachMember `json:"count_each_member"`
+	MembersStats     []MemberStat      `json:"members_stats"`
 	LatestEventDate  string            `json:"latest_event_date"`
 	LatestEventTitle string            `json:"latest_event_title"`
 	LatestMember     string            `json:"latest_member"`
@@ -66,6 +67,13 @@ type Stats struct {
 type CountEachMember struct {
 	MemberName string `json:"member_name"`
 	Count      int    `json:"count"`
+}
+
+type MemberStat struct {
+	MemberName string `json:"member_name"`
+	EventCount int    `json:"event_count"`
+	MaxTop1    int    `json:"max_top1"`
+	MinLast    int    `json:"min_last"`
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -170,6 +178,57 @@ func computeStats() Stats {
 		})
 	}
 
+	// Per-member max top1 / min last entry across all events
+	type memberAgg struct {
+		count   int
+		maxTop1 int
+		minLast int // starts at -1 (unset)
+	}
+	agg := map[string]*memberAgg{}
+	for _, ev := range events {
+		a, ok := agg[ev.Member]
+		if !ok {
+			a = &memberAgg{minLast: -1}
+			agg[ev.Member] = a
+		}
+		a.count++
+		for _, sec := range ev.Sections {
+			if sec.Type != "spender" {
+				continue
+			}
+			var entries []SpenderEntry
+			if err := json.Unmarshal(sec.Entries, &entries); err != nil {
+				break
+			}
+			if len(entries) == 0 {
+				break
+			}
+			sort.Slice(entries, func(i, j int) bool { return entries[i].Rank < entries[j].Rank })
+			top1 := entries[0].Amount
+			last := entries[len(entries)-1].Amount
+			if top1 > a.maxTop1 {
+				a.maxTop1 = top1
+			}
+			if a.minLast == -1 || last < a.minLast {
+				a.minLast = last
+			}
+			break
+		}
+	}
+	membersStats := []MemberStat{}
+	for name, a := range agg {
+		minLast := a.minLast
+		if minLast == -1 {
+			minLast = 0
+		}
+		membersStats = append(membersStats, MemberStat{
+			MemberName: name,
+			EventCount: a.count,
+			MaxTop1:    a.maxTop1,
+			MinLast:    minLast,
+		})
+	}
+
 	// log.Println(len(events),
 	// 	highest,
 	// 	highestEvent,
@@ -188,6 +247,7 @@ func computeStats() Stats {
 		MembersCount:     len(members),
 		Members:          members,
 		CountEachMember:  countEachMember,
+		MembersStats:     membersStats,
 		LatestEventDate:  latestEvent.Date,
 		LatestEventTitle: latestEvent.Title,
 		LatestMember:     latestEvent.Member,
@@ -349,6 +409,9 @@ func createEventHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		imgPath = photoDir + "/" + filename
+	}
+	if imgPath == "" {
+		imgPath = strings.TrimSpace(r.FormValue("img_url"))
 	}
 
 	dbMu.Lock()

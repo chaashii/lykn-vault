@@ -19,36 +19,12 @@
         <span class="logo">LYKN Vault</span>
         <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.3px">Top Spender</span>
       </div>
-      <a href="/admin.html" class="admin-link">Admin →</a>
+      <!-- <a href="/admin.html" class="admin-link">Admin →</a> -->
     </div>
   </header>
 
   <main>
-    <div class="stats" id="stats">
-      <div class="stat">
-        <div class="stat-label">Events per Member</div>
-        <div id="s-count-members" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Total Events</div>
-        <div class="stat-value" id="s-total">—</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Highest #1 Spender</div>
-        <div class="stat-value" id="s-highest" style="color:var(--nut)">—</div>
-        <div class="stat-sub" id="s-highest-sub"></div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Members Featured</div>
-        <div class="stat-value" id="s-members">—</div>
-        <div class="stat-sub" id="s-members-sub"></div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Latest Event</div>
-        <div class="stat-value" id="s-latest" style="font-size:18px;letter-spacing:-.3px">—</div>
-        <div class="stat-sub" id="s-latest-sub"></div>
-      </div>
-    </div>
+    <div class="stats" id="stats"></div>
 
     <div class="sh">
       <h2 class="sh-title">All Events</h2>
@@ -131,17 +107,17 @@
       if (!s?.count_each_member?.length) return;
 
       // Stat card
-      const container = document.getElementById('s-count-members');
+      // const container = document.getElementById('s-count-members');
       const sorted = [...s.count_each_member].sort((a, b) => {
         const ai = MEMBER_ORDER.indexOf(a.member_name);
         const bi = MEMBER_ORDER.indexOf(b.member_name);
         return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
       });
-      container.innerHTML = sorted.map(m => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <span style="font-size:12px;font-weight:700;color:${memberColor(m.member_name)}">${m.member_name}</span>
-          <span style="font-size:13px;font-weight:800;letter-spacing:-.3px">${m.count}</span>
-        </div>`).join('');
+      // container.innerHTML = sorted.map(m => `
+      //   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      //     <span style="font-size:12px;font-weight:700;color:${memberColor(m.member_name)}">${m.member_name}</span>
+      //     <span style="font-size:13px;font-weight:800;letter-spacing:-.3px">${m.count}</span>
+      //   </div>`).join('');
 
       // Filter buttons — rebuild with counts then re-attach listeners
       const countMap = Object.fromEntries(s.count_each_member.map(m => [m.member_name, m.count]));
@@ -168,22 +144,20 @@
 
     function renderStats(s) {
       if (!s) return;
-      document.getElementById('s-total').textContent = s.total_events ?? '—';
-
-      const hEl = document.getElementById('s-highest');
-      hEl.textContent = s.highest_amount ? baht(s.highest_amount) : '—';
-      hEl.style.color = memberColor(s.highest_member);
-      document.getElementById('s-highest-sub').textContent =
-        s.highest_member ? `${s.highest_member} · ${s.highest_event}` : '';
-
-      document.getElementById('s-members').textContent = s.members_count ?? '—';
-      document.getElementById('s-members-sub').textContent = (s.members || []).join(' · ');
-
-      const lEl = document.getElementById('s-latest');
-      lEl.textContent = s.latest_event_date || '—';
-      lEl.style.color = memberColor(s.latest_member);
-      document.getElementById('s-latest-sub').textContent =
-        s.latest_member ? `${s.latest_member} · ${s.latest_event_title}` : '';
+      const statsEl = document.getElementById('stats');
+      const sorted = (s.members_stats || []).slice().sort((a, b) => {
+        const ai = MEMBER_ORDER.indexOf(a.member_name);
+        const bi = MEMBER_ORDER.indexOf(b.member_name);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+      statsEl.innerHTML = sorted.map(m => `
+        <div class="stat">
+          <div class="stat-label" style="color:${memberColor(m.member_name)}">${m.member_name}</div>
+          <div class="stat-value" style="color:${memberColor(m.member_name)}">${m.max_top1 ? baht(m.max_top1) : '—'}</div>
+          <div class="stat-sub">Top #1 max</div>
+          <div style="margin-top:6px;font-size:14px;font-weight:700;color:var(--muted)">${m.min_last ? baht(m.min_last) : '—'}</div>
+          <div class="stat-sub">Min last · ${m.event_count} event${m.event_count !== 1 ? 's' : ''}</div>
+        </div>`).join('');
     }
 
     // ── Cards ─────────────────────────────────────────────────────
@@ -208,7 +182,7 @@
           ? formatDateRange(ev.start_date, ev.end_date)
           : ev.period || ev.date;
         const imgInner = ev.img
-          ? `<img class="card-img" src="/${ev.img}" alt="${ev.title}" loading="lazy">`
+          ? `<img class="card-img" src="${ev.img.startsWith('http') ? ev.img : '/' + ev.img}" alt="${ev.title}" loading="lazy">`
           : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;font-size:40px">🎤</div>`;
         const imgHTML = `<div style="position:relative">
           ${imgInner}
@@ -261,7 +235,7 @@
 
       const body = document.getElementById('mBody');
       const imgHTML = ev.img
-        ? `<img class="modal-img" src="/${ev.img}" alt="${ev.title}">`
+        ? `<img class="modal-img" src="${ev.img.startsWith('http') ? ev.img : '/' + ev.img}" alt="${ev.title}">`
         : '';
       body.innerHTML = imgHTML;
 
