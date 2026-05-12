@@ -293,8 +293,12 @@ func eventsHandler(w http.ResponseWriter, r *http.Request) {
 
 		sort.Slice(events, func(i, j int) bool {
 			di, dj := events[i].EndDate, events[j].EndDate
-			if di == "" { di = events[i].Date }
-			if dj == "" { dj = events[j].Date }
+			if di == "" {
+				di = events[i].Date
+			}
+			if dj == "" {
+				dj = events[j].Date
+			}
 			ti, _ := time.Parse("02 Jan 2006", di)
 			tj, _ := time.Parse("02 Jan 2006", dj)
 			return ti.After(tj)
