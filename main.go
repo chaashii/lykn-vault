@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -92,7 +95,23 @@ var (
 	dbMu sync.RWMutex
 )
 
+// const driveDataURL = "https://drive.google.com/uc?export=download&id=1jb1nha29zEaVvRt7KrxgEhlutmf587hQ"
+
 func loadDB() error {
+	// resp, err := http.Get(driveDataURL)
+	// if err == nil {
+	// 	defer resp.Body.Close()
+	// 	if resp.StatusCode == 200 {
+	// 		data, err := io.ReadAll(resp.Body)
+	// 		if err == nil {
+	// 			if jsonErr := json.Unmarshal(data, &db); jsonErr == nil {
+	// 				log.Println("loaded data from Google Drive")
+	// 				return nil
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// log.Println("Google Drive fetch failed, falling back to local file")
 	data, err := os.ReadFile(dataFile)
 	if os.IsNotExist(err) {
 		db = Database{Events: []Event{}}
@@ -290,6 +309,7 @@ func cors(next http.Handler) http.Handler {
 func eventsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
+		// loadDB()
 		dbMu.RLock()
 		events := make([]Event, len(db.Events))
 		copy(events, db.Events)
@@ -874,15 +894,98 @@ Rules:
 }
 
 // POST /api/extract-multi — accepts photos[] files, auto-detects section type per image
+// ── OCR (Tesseract) ───────────────────────────────────────────────────────────
+
+var (
+	ocrHeaderRe = regexp.MustCompile(`(?i)(TOP[\s_]*(SPENDER|STUDIO|SPEND[A-Z]*)|LUCKY[\s_]*(FAN|DRAW|[A-Z]*))`)
+	// matches "phone amount" pairs anywhere in text, handles spaces around dash and capital X
+	ocrEntryRe = regexp.MustCompile(`(\d{3,4}\s*-\s*\d{3,7}[xX*]{3,7})\s+(\d{1,3}(?:,\d{3})+|\d{4,6})`)
+)
+
+// ocrWithTesseract runs the tesseract binary on imgBytes and returns raw text.
+// Requires tesseract installed and in PATH (https://github.com/UB-Mannheim/tesseract/wiki).
+func ocrWithTesseract(imgBytes []byte) (string, error) {
+	tmp, err := os.CreateTemp("", "lykn_ocr_*.jpg")
+	if err != nil {
+		return "", fmt.Errorf("create temp: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if _, err = tmp.Write(imgBytes); err != nil {
+		tmp.Close()
+		return "", fmt.Errorf("write temp: %w", err)
+	}
+	tmp.Close()
+
+	outBase := tmp.Name() + "_out"
+	defer os.Remove(outBase + ".txt")
+
+	// --psm 6 = assume uniform block of text (table layout)
+	out, err := exec.Command("tesseract", tmp.Name(), outBase, "-l", "eng", "--psm", "6").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("tesseract failed: %v — %s", err, strings.TrimSpace(string(out)))
+	}
+
+	text, err := os.ReadFile(outBase + ".txt")
+	if err != nil {
+		return "", fmt.Errorf("read output: %w", err)
+	}
+	return string(text), nil
+}
+
+// parseOCRText scans the full Tesseract output for phone+amount pairs (handles
+// 2-column layouts and noisy rank labels), then sorts by amount desc to assign ranks.
+func parseOCRText(text string) (*Section, error) {
+	log.Println("text: ", text)
+	sectionName := "TOP SPENDER"
+	sectionType := "spender"
+
+	if m := ocrHeaderRe.FindString(text); m != "" {
+		upper := strings.ToUpper(m)
+		if strings.Contains(upper, "LUCKY") {
+			sectionType = "lucky"
+			sectionName = "LUCKY FAN"
+		} else {
+			sectionName = strings.ToUpper(strings.TrimSpace(m))
+		}
+	}
+
+	matches := ocrEntryRe.FindAllStringSubmatch(text, -1)
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("no phone+amount pairs found — check tesseract output")
+	}
+
+	type pair struct {
+		phone  string
+		amount int
+	}
+	var pairs []pair
+	for _, m := range matches {
+		phone := strings.ReplaceAll(m[1], " ", "")
+		amount, err := strconv.Atoi(strings.ReplaceAll(m[2], ",", ""))
+		if err != nil || amount < 100 {
+			continue
+		}
+		pairs = append(pairs, pair{phone: phone, amount: amount})
+	}
+
+	if len(pairs) == 0 {
+		return nil, fmt.Errorf("no valid entries parsed")
+	}
+
+	sort.Slice(pairs, func(i, j int) bool { return pairs[i].amount > pairs[j].amount })
+
+	entries := make([]SpenderEntry, len(pairs))
+	for i, p := range pairs {
+		entries[i] = SpenderEntry{Rank: i + 1, Phone: p.phone, Amount: p.amount}
+	}
+	b, _ := json.Marshal(entries)
+	return &Section{Name: sectionName, Type: sectionType, Entries: json.RawMessage(b)}, nil
+}
+
+// POST /api/extract-multi — accepts photos[] files, uses Tesseract OCR (no AI)
 func extractMultiHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		writeError(w, http.StatusInternalServerError, "ANTHROPIC_API_KEY not set")
 		return
 	}
 
@@ -907,8 +1010,7 @@ func extractMultiHandler(w http.ResponseWriter, r *http.Request) {
 	done := make(chan struct{}, len(fileHeaders))
 
 	for i, fh := range fileHeaders {
-		i, fh := i, fh
-		go func() {
+		go func(i int, fh *multipart.FileHeader) {
 			defer func() { done <- struct{}{} }()
 			f, err := fh.Open()
 			if err != nil {
@@ -921,13 +1023,18 @@ func extractMultiHandler(w http.ResponseWriter, r *http.Request) {
 				results[i] = result{name: fh.Filename, errMsg: "read error: " + err.Error()}
 				return
 			}
-			sec, err := callClaudeAutoSection(apiKey, imgBytes, mimeFromExt(filepath.Ext(fh.Filename)))
+			text, err := ocrWithTesseract(imgBytes)
+			if err != nil {
+				results[i] = result{name: fh.Filename, errMsg: err.Error()}
+				return
+			}
+			sec, err := parseOCRText(text)
 			if err != nil {
 				results[i] = result{name: fh.Filename, errMsg: err.Error()}
 				return
 			}
 			results[i] = result{name: fh.Filename, section: sec}
-		}()
+		}(i, fh)
 	}
 
 	for range fileHeaders {

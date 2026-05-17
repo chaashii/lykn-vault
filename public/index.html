@@ -26,6 +26,8 @@
   <main>
     <div class="stats" id="stats"></div>
 
+    <div class="filters" id="yearFilters" style="margin-bottom:14px;display:none"></div>
+
     <div class="sh">
       <h2 class="sh-title">All Events</h2>
       <div class="filters" id="filters">
@@ -64,6 +66,13 @@
     const MEMBER_ORDER = ['WILLIAM', 'LEGO', 'NUT', 'HONG', 'TUI', 'NUTHONG'];
     let allEvents = [];
     let activeFilter = 'all';
+    let activeYear = 'all';
+
+    function getEventYear(ev) {
+      const raw = ev.start_date || ev.end_date || ev.date || '';
+      const m = raw.match(/\b(20\d\d)\b/);
+      return m ? m[1] : null;
+    }
 
     function baht(n) { return '฿' + Number(n).toLocaleString('th-TH'); }
 
@@ -105,6 +114,7 @@
         const { events, stats } = await res.json();
         allEvents = events || [];
         renderStats(stats);
+        renderYearFilters();
         renderCards(activeFilter);
         renderFilterTopSpender(stats)
       } catch (e) {
@@ -116,6 +126,25 @@
     // ── Stats ─────────────────────────────────────────────────────
     function memberColor(m) {
       return { NUT: 'var(--nut)', TUI: 'var(--tui)', NUTHONG: 'var(--nuthong)', LEGO: 'var(--lego)', WILLIAM: 'var(--william)', HONG: 'var(--hong)' }[m] || 'var(--text)';
+    }
+
+    function renderYearFilters() {
+      const years = [...new Set(allEvents.map(getEventYear).filter(Boolean))].sort();
+      const el = document.getElementById('yearFilters');
+      if (!el) return;
+      if (years.length < 2) { el.style.display = 'none'; return; }
+      el.style.display = 'flex';
+      el.innerHTML =
+        `<button class="fb${activeYear === 'all' ? ' on' : ''}" data-y="all">All Years</button>` +
+        years.map(y => `<button class="fb${activeYear === y ? ' on' : ''}" data-y="${y}">${y}</button>`).join('');
+      el.querySelectorAll('[data-y]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          el.querySelectorAll('[data-y]').forEach(b => b.classList.remove('on'));
+          btn.classList.add('on');
+          activeYear = btn.dataset.y;
+          renderCards(activeFilter);
+        });
+      });
     }
 
     function renderFilterTopSpender(s) {
@@ -147,9 +176,9 @@
     }
 
     function attachFilterListeners() {
-      document.querySelectorAll('.fb').forEach(btn => {
+      document.querySelectorAll('#filters .fb').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.fb').forEach(b => b.classList.remove('on'));
+          document.querySelectorAll('#filters .fb').forEach(b => b.classList.remove('on'));
           btn.classList.add('on');
           activeFilter = btn.dataset.m;
           renderCards(activeFilter);
@@ -184,7 +213,8 @@
     // ── Cards ─────────────────────────────────────────────────────
     function renderCards(filter) {
       const grid = document.getElementById('grid');
-      const list = filter === 'all' ? allEvents : allEvents.filter(e => e.member === filter);
+      let list = filter === 'all' ? allEvents : allEvents.filter(e => e.member === filter);
+      if (activeYear !== 'all') list = list.filter(e => getEventYear(e) === activeYear);
 
       if (!list.length) {
         grid.innerHTML = '<div class="state-msg">ยังไม่มีอีเวนต์</div>';
@@ -202,7 +232,8 @@
         const dateDisplay = ev.start_date
           ? formatDateRange(ev.start_date, ev.end_date)
           : ev.period || ev.date;
-        // const coverPhoto = ev.cover_photo
+        
+          // const coverPhoto = ev.cover_photo
         //   ? `<img class="card-img" src="${imageSrc(ev.cover_photo)}" alt="${ev.title}" loading="lazy">`
         //   : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;font-size:40px">🎤</div>`;
         // const coverHTML = `<div style="position:relative">

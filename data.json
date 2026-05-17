@@ -4,9 +4,9 @@
       "id": 1,
       "title": "Let's Go Let's Fun with Lego",
       "member": "LEGO",
+      "period": "12 – 25 Jun 2025",
       "start_date": "28 Jun 2025",
       "end_date": "28 Jun 2025",
-      "period": "12 – 25 Jun 2025",
       "hashtag": "#MELAxLEGO",
       "img": "https://lh3.googleusercontent.com/d/1coZvygU7-ZBCHjlUXJPyUN68kAgTqqJK",
       "cover_photo": "",
@@ -124,9 +124,9 @@
       "id": 2,
       "title": "Like Up The World with Nut-Hong",
       "member": "NUTHONG",
+      "period": "5 – 18 Aug 2025",
       "start_date": "31 Aug 2025",
       "end_date": "31 Aug 2025",
-      "period": "5 – 18 Aug 2025",
       "hashtag": "#MELAxNUTHONG",
       "ref": "https://x.com/Mela_Brand/status/1958152077642969518?s=20",
       "img": "https://lh3.googleusercontent.com/d/1q1T8sx8okD5MFocY9vktMvXKtXi3CvkY",
@@ -245,9 +245,9 @@
       "id": 3,
       "title": "Tui Talk \u0026 Chill with Mela",
       "member": "TUI",
+      "period": "18 Sep – 2 Oct 2025",
       "start_date": "25 Oct 2025",
       "end_date": "25 Oct 2025",
-      "period": "18 Sep – 2 Oct 2025",
       "hashtag": "#MELAxTUI",
       "img": "https://lh3.googleusercontent.com/d/1iFRFd8rLLfnds4aBcSJf4ufT70r8dlj8",
       "cover_photo": "",
@@ -365,9 +365,9 @@
       "id": 4,
       "title": "Time to Be with Nut",
       "member": "NUT",
+      "period": "5 – 16 Mar 2026",
       "start_date": "22 Mar 2026",
       "end_date": "22 Mar 2026",
-      "period": "5 – 16 Mar 2026",
       "hashtag": "#MELAxNUT",
       "ref": "https://x.com/Mela_Brand/status/2034253559114690620?s=20",
       "img": "https://lh3.googleusercontent.com/d/12lYP5Pr-dfTJ-M7n28ACLc5o8TSGq845",
@@ -542,9 +542,9 @@
       "id": 5,
       "title": "A Carnival of Love with Tui",
       "member": "TUI",
+      "period": "3 – 18 Apr 2026",
       "start_date": "26 Apr 2026",
       "end_date": "26 Apr 2026",
-      "period": "3 – 18 Apr 2026",
       "hashtag": "#MELAxTUI",
       "ref": "https://x.com/Mela_Brand/status/2046212379592290429?s=20",
       "img": "https://lh3.googleusercontent.com/d/1XySuZR5SmG8oY00FoGrz7afmCah3u13I",
@@ -719,9 +719,9 @@
       "id": 6,
       "title": "A DAY WITH NUT",
       "member": "NUT",
+      "period": "1 - 20 Apr 2026",
       "start_date": "17 May 2026",
       "end_date": "17 May 2026",
-      "period": "1 - 20 Apr 2026",
       "hashtag": "#FRIENDLYMExNUT",
       "img": "https://lh3.googleusercontent.com/d/1QU-RIRCttadCwJu-HUE9zpJkJbwxtBxk",
       "cover_photo": "",
@@ -839,9 +839,9 @@
       "id": 7,
       "title": "𝐌𝐞𝐥𝐚 '𝐅𝐚𝐥𝐥𝐢𝐧𝐠 𝐢𝐧 𝐋💓𝐯𝐞 𝐖𝐈𝐋𝐋𝐈𝐀𝐌'  🥰",
       "member": "WILLIAM",
+      "period": "5 - 16 Jul 2025",
       "start_date": "02 Aug 2025",
       "end_date": "02 Aug 2025",
-      "period": "5 - 16 Jul 2025",
       "hashtag": "#MELAxWILLIAM",
       "ref": "https://x.com/Mela_Brand/status/1946555680640700523?s=20",
       "img": "https://lh3.googleusercontent.com/d/1NB2lY091OhXiwMbTxt0KZKdPEvrHXuo3",
@@ -960,13 +960,13 @@
       "id": 8,
       "title": "Heartbeat of Fun with Hong",
       "member": "HONG",
+      "period": "17 Feb – 2 Mar 2026",
       "start_date": "21 Mar 2026",
       "end_date": "21 Mar 2026",
-      "period": "17 Feb – 2 Mar 2026",
       "hashtag": "#MELAxHONG",
+      "ref": "https://x.com/Mela_Brand/status/2028817694922055746?s=20",
       "img": "https://lh3.googleusercontent.com/d/1OwnqQg32f81hbuEEzGP_Hp-P7ctp-dJI",
       "cover_photo": "",
-      "ref": "https://x.com/Mela_Brand/status/2028817694922055746?s=20",
       "sections": [
         {
           "name": "TOP SPENDER",
@@ -1074,26 +1074,150 @@
             }
           ]
         }
-      ]
+      ],
+      "created_at": "0001-01-01T00:00:00Z"
     },
     {
       "id": 9,
-      "title": "𝑭𝒊𝒏𝒅 𝒀𝒐𝒖𝒓 𝑷𝒆𝒓𝒇𝒆𝒄𝒕 𝑴𝒂𝒕𝒕𝒆 𝒘𝒊𝒕𝒉 ‘𝑵𝑼𝑻 & 𝑯𝑶𝑵𝑮’ 💘",
+      "title": "𝑭𝒊𝒏𝒅 𝒀𝒐𝒖𝒓 𝑷𝒆𝒓𝒇𝒆𝒄𝒕 𝑴𝒂𝒕𝒕𝒆 𝒘𝒊𝒕𝒉 ‘𝑵𝑼𝑻 \u0026 𝑯𝑶𝑵𝑮’ 💘",
       "member": "NUTHONG",
+      "period": "1 – 20 May 2026",
       "start_date": "20 Jun 2026",
       "end_date": "21 Jun 2026",
-      "period": "1 – 20 May 2026",
       "hashtag": "#LOrealGlycolicBrightXNutHong",
+      "ref": "https://x.com/LOrealParisTH/status/2049096289879486730?s=20",
       "img": "https://lh3.googleusercontent.com/d/1UdQYp2bWpK1lVlYqU74MuBtyvUZqmTAd",
       "cover_photo": "",
-      "ref": "https://x.com/LOrealParisTH/status/2049096289879486730?s=20",
       "sections": [
         {
           "name": "TOP SPENDER",
           "type": "spender",
           "entries": []
         }
-      ]
+      ],
+      "created_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "id": 10,
+      "title": "𝐌𝐄𝐋𝐀 '𝐋𝐘𝐊𝐘𝐎𝐔 𝐥𝐨𝐯𝐞 𝐲𝐨𝐮 𝐰𝐢𝐭𝐡 𝐋𝐘𝐊𝐍 \u0026 𝐦𝐢𝐧𝐢 𝐬𝐡𝐨𝐰",
+      "member": "LYKN",
+      "date": "5 Jul 2025",
+      "period": "16-30 Jun 2025",
+      "start_date": "16 Jun 2025",
+      "end_date": "30 Jun 2025",
+      "hashtag": "#MELAxLYKN",
+      "ref": "https://x.com/Mela_Brand/status/1940397266545893441?s=20",
+      "img": "https://lh3.googleusercontent.com/d/1tNJgNBN0G1HGtLhKTX8iEKJnRg2rzlnu",
+      "cover_photo": "https://lh3.googleusercontent.com/d/1tmfXWwMHFOhUdSg4Um7ecbKGEVpwfKyp",
+      "sections": [
+        {
+          "name": "TOP STUDIO",
+          "type": "spender",
+          "entries": [
+            {
+              "rank": 1,
+              "phone": "096-021xxxx",
+              "amount": 126400
+            },
+            {
+              "rank": 2,
+              "phone": "092-450xxxx",
+              "amount": 63990
+            },
+            {
+              "rank": 3,
+              "phone": "084-242xxxx",
+              "amount": 51530
+            },
+            {
+              "rank": 4,
+              "phone": "080-235xxxx",
+              "amount": 51350
+            },
+            {
+              "rank": 5,
+              "phone": "098-603xxxx",
+              "amount": 50560
+            },
+            {
+              "rank": 6,
+              "phone": "081-838xxxx",
+              "amount": 48190
+            },
+            {
+              "rank": 7,
+              "phone": "081-906xxxx",
+              "amount": 42660
+            },
+            {
+              "rank": 8,
+              "phone": "095-237xxxx",
+              "amount": 42660
+            },
+            {
+              "rank": 9,
+              "phone": "098-953xxxx",
+              "amount": 41870
+            },
+            {
+              "rank": 10,
+              "phone": "064-278xxxx",
+              "amount": 37920
+            },
+            {
+              "rank": 11,
+              "phone": "063-192xxxx",
+              "amount": 31600
+            },
+            {
+              "rank": 12,
+              "phone": "063-195xxxx",
+              "amount": 24490
+            },
+            {
+              "rank": 13,
+              "phone": "089-537xxxx",
+              "amount": 22910
+            },
+            {
+              "rank": 14,
+              "phone": "086-908xxxx",
+              "amount": 20540
+            },
+            {
+              "rank": 15,
+              "phone": "083-979xxxx",
+              "amount": 20540
+            },
+            {
+              "rank": 16,
+              "phone": "082-898xxxx",
+              "amount": 15800
+            },
+            {
+              "rank": 17,
+              "phone": "091-049xxxx",
+              "amount": 15800
+            },
+            {
+              "rank": 18,
+              "phone": "096-669xxxx",
+              "amount": 11850
+            },
+            {
+              "rank": 19,
+              "phone": "062-484xxxx",
+              "amount": 11850
+            },
+            {
+              "rank": 20,
+              "phone": "080-074xxxx",
+              "amount": 10270
+            }
+          ]
+        }
+      ],
+      "created_at": "2026-05-17T17:46:31.6819124+07:00"
     }
   ]
 }
