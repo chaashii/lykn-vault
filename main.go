@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -33,17 +35,19 @@ type Section struct {
 }
 
 type Event struct {
-	ID        int       `json:"id"`
-	Title     string    `json:"title"`
-	Member    string    `json:"member"`
-	Date      string    `json:"date"`
-	Period    string    `json:"period"`
-	StartDate string    `json:"start_date,omitempty"`
-	EndDate   string    `json:"end_date,omitempty"`
-	Hashtag   string    `json:"hashtag"`
-	Img       string    `json:"img"`
-	Sections  []Section `json:"sections"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         int       `json:"id"`
+	Title      string    `json:"title"`
+	Member     string    `json:"member"`
+	Date       string    `json:"date"`
+	Period     string    `json:"period"`
+	StartDate  string    `json:"start_date,omitempty"`
+	EndDate    string    `json:"end_date,omitempty"`
+	Hashtag    string    `json:"hashtag"`
+	Ref        string    `json:"ref,omitempty"`
+	Img        string    `json:"img"`
+	CoverPhoto string    `json:"cover_photo"`
+	Sections   []Section `json:"sections"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type Database struct {
@@ -375,6 +379,8 @@ func createEventHandler(w http.ResponseWriter, r *http.Request) {
 	startDate := strings.TrimSpace(r.FormValue("start_date"))
 	endDate := strings.TrimSpace(r.FormValue("end_date"))
 	hashtag := strings.TrimSpace(r.FormValue("hashtag"))
+	ref := strings.TrimSpace(r.FormValue("ref"))
+	coverPhoto := strings.TrimSpace(r.FormValue("cover_photo"))
 
 	if title == "" || member == "" || date == "" {
 		writeError(w, http.StatusBadRequest, "title, member, and date are required")
@@ -422,17 +428,19 @@ func createEventHandler(w http.ResponseWriter, r *http.Request) {
 	defer dbMu.Unlock()
 
 	ev := Event{
-		ID:        nextID(),
-		Title:     title,
-		Member:    member,
-		Date:      date,
-		Period:    period,
-		StartDate: startDate,
-		EndDate:   endDate,
-		Hashtag:   hashtag,
-		Img:       imgPath,
-		Sections:  sections,
-		CreatedAt: time.Now(),
+		ID:         nextID(),
+		Title:      title,
+		Member:     member,
+		Date:       date,
+		Period:     period,
+		StartDate:  startDate,
+		EndDate:    endDate,
+		Hashtag:    hashtag,
+		Ref:        ref,
+		Img:        imgPath,
+		CoverPhoto: coverPhoto,
+		Sections:   sections,
+		CreatedAt:  time.Now(),
 	}
 	db.Events = append(db.Events, ev)
 
@@ -476,6 +484,111 @@ type claudeResponse struct {
 	} `json:"content"`
 }
 
+// OpenAI API request/response shapes (minimal)
+type gptRequest struct {
+	Model     string       `json:"model"`
+	MaxTokens int          `json:"max_tokens"`
+	Messages  []gptMessage `json:"messages"`
+}
+
+type gptMessage struct {
+	Role    string     `json:"role"`
+	Content []gptBlock `json:"content"`
+}
+
+type gptBlock struct {
+	Type     string       `json:"type"`
+	Text     string       `json:"text,omitempty"`
+	ImageURL *gptImageURL `json:"image_url,omitempty"`
+}
+
+type gptImageURL struct {
+	URL string `json:"url"`
+}
+
+type gptResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// readImageFromRequest reads image bytes from multipart "photo" file, "img_url", or "filename".
+func readImageFromRequest(r *http.Request) (imgBytes []byte, mediaType string, errMsg string, status int) {
+	file, header, err := r.FormFile("photo")
+	if err == nil {
+		defer file.Close()
+		imgBytes, err = io.ReadAll(file)
+		if err != nil {
+			return nil, "", "failed to read photo", http.StatusInternalServerError
+		}
+		return imgBytes, mimeFromExt(filepath.Ext(header.Filename)), "", 0
+	}
+
+	if imgURL := strings.TrimSpace(r.FormValue("img_url")); imgURL != "" {
+		resp, fetchErr := http.Get(imgURL)
+		if fetchErr != nil {
+			return nil, "", "failed to fetch image: " + fetchErr.Error(), http.StatusBadGateway
+		}
+		defer resp.Body.Close()
+		imgBytes, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, "", "failed to read image response", http.StatusBadGateway
+		}
+		ct := resp.Header.Get("Content-Type")
+		mt := "image/jpeg"
+		switch {
+		case strings.Contains(ct, "png"):
+			mt = "image/png"
+		case strings.Contains(ct, "gif"):
+			mt = "image/gif"
+		case strings.Contains(ct, "webp"):
+			mt = "image/webp"
+		}
+		return imgBytes, mt, "", 0
+	}
+
+	filename := strings.TrimSpace(r.FormValue("filename"))
+	if filename == "" {
+		return nil, "", "provide 'photo' file, 'img_url', or 'filename' field", http.StatusBadRequest
+	}
+	filename = filepath.Base(filename)
+	imgBytes, err = os.ReadFile(filepath.Join(photoDir, filename))
+	if err != nil {
+		return nil, "", "photo not found: " + filename, http.StatusNotFound
+	}
+	return imgBytes, mimeFromExt(filepath.Ext(filename)), "", 0
+}
+
+// parseLLMText strips markdown fences and parses the leaderboard JSON into a Section.
+func parseLLMText(raw string) (*Section, string) {
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "```json")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	raw = strings.TrimSpace(raw)
+
+	var extracted struct {
+		SectionName string `json:"section_name"`
+		Entries     []struct {
+			Rank   int    `json:"rank"`
+			Phone  string `json:"phone"`
+			Amount int    `json:"amount"`
+		} `json:"entries"`
+	}
+	if err := json.Unmarshal([]byte(raw), &extracted); err != nil {
+		return nil, raw
+	}
+	entries := make([]SpenderEntry, len(extracted.Entries))
+	for i, e := range extracted.Entries {
+		entries[i] = SpenderEntry{Rank: e.Rank, Phone: e.Phone, Amount: e.Amount}
+	}
+	entriesJSON, _ := json.Marshal(entries)
+	sec := &Section{Name: extracted.SectionName, Type: "spender", Entries: json.RawMessage(entriesJSON)}
+	return sec, ""
+}
+
 // POST /api/extract  body: multipart with field "filename" (name inside Photo_topspender/)
 //
 //	or field "photo" (uploaded file)
@@ -496,33 +609,10 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read image bytes — either from uploaded file or existing filename
-	var imgBytes []byte
-	var mediaType string
-
-	file, header, err := r.FormFile("photo")
-	if err == nil {
-		defer file.Close()
-		imgBytes, err = io.ReadAll(file)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to read photo")
-			return
-		}
-		mediaType = mimeFromExt(filepath.Ext(header.Filename))
-	} else {
-		filename := strings.TrimSpace(r.FormValue("filename"))
-		if filename == "" {
-			writeError(w, http.StatusBadRequest, "provide 'photo' file or 'filename' field")
-			return
-		}
-		// Sanitise: no path traversal
-		filename = filepath.Base(filename)
-		imgBytes, err = os.ReadFile(filepath.Join(photoDir, filename))
-		if err != nil {
-			writeError(w, http.StatusNotFound, "photo not found: "+filename)
-			return
-		}
-		mediaType = mimeFromExt(filepath.Ext(filename))
+	imgBytes, mediaType, errMsg, errStatus := readImageFromRequest(r)
+	if errMsg != "" {
+		writeError(w, errStatus, errMsg)
+		return
 	}
 
 	b64 := base64.StdEncoding.EncodeToString(imgBytes)
@@ -601,43 +691,262 @@ Rules:
 		return
 	}
 
-	// Strip markdown code fences Claude sometimes adds despite instructions
+	section, rawFallback := parseLLMText(claudeResp.Content[0].Text)
+	if section == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"raw": rawFallback})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"section": section})
+}
+
+// POST /api/extract-gpt — same as /api/extract but uses OpenAI GPT-4o
+func extractGPTHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		writeError(w, http.StatusInternalServerError, "OPENAI_API_KEY not set")
+		return
+	}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "failed to parse form")
+		return
+	}
+
+	imgBytes, mediaType, errMsg, errStatus := readImageFromRequest(r)
+	if errMsg != "" {
+		writeError(w, errStatus, errMsg)
+		return
+	}
+
+	b64 := base64.StdEncoding.EncodeToString(imgBytes)
+	dataURL := fmt.Sprintf("data:%s;base64,%s", mediaType, b64)
+
+	prompt := `This image shows a top spender leaderboard from a fan-meeting event.
+Extract all the data and return ONLY a valid JSON object in this exact shape:
+{
+  "section_name": "TOP STUDIO",
+  "entries": [
+    {"rank": 1, "phone": "091-079xxxx", "amount": 77420},
+    ...
+  ]
+}
+Rules:
+- "section_name": the section title shown in the image (e.g. "TOP STUDIO", "TOP SPENDER").
+- "entries": every row visible, sorted by rank ascending.
+- "phone": copy the masked phone number exactly as shown.
+- "amount": integer, Thai baht, no commas or symbols.
+- Return ONLY the JSON object. No markdown, no explanation.`
+
+	reqBody := gptRequest{
+		Model:     "gpt-4o",
+		MaxTokens: 2048,
+		Messages: []gptMessage{
+			{
+				Role: "user",
+				Content: []gptBlock{
+					{Type: "image_url", ImageURL: &gptImageURL{URL: dataURL}},
+					{Type: "text", Text: prompt},
+				},
+			},
+		},
+	}
+
+	bodyBytes, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest(http.MethodPost, "https://api.openai.com/v1/chat/completions", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "openai api error: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	respBytes, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		var apiErr struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		json.Unmarshal(respBytes, &apiErr)
+		msg := apiErr.Error.Message
+		if msg == "" {
+			msg = fmt.Sprintf("openai API status %d: %s", resp.StatusCode, string(respBytes))
+		}
+		writeError(w, http.StatusBadGateway, msg)
+		return
+	}
+
+	var gptResp gptResponse
+	if err := json.Unmarshal(respBytes, &gptResp); err != nil || len(gptResp.Choices) == 0 {
+		writeError(w, http.StatusBadGateway, "failed to parse openai response: "+string(respBytes))
+		return
+	}
+
+	section, rawFallback := parseLLMText(gptResp.Choices[0].Message.Content)
+	if section == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"raw": rawFallback})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"section": section})
+}
+
+// callClaudeAutoSection sends one image to Claude and returns a Section with auto-detected type.
+func callClaudeAutoSection(apiKey string, imgBytes []byte, mediaType string) (*Section, error) {
+	b64 := base64.StdEncoding.EncodeToString(imgBytes)
+
+	prompt := `This image shows a leaderboard from a fan-meeting event.
+Extract all data and return ONLY a valid JSON object.
+
+If it shows a TOP SPENDER / TOP STUDIO leaderboard (rows have Thai baht amounts):
+{"section_name": "TOP SPENDER", "type": "spender", "entries": [{"rank": 1, "phone": "091-079xxxx", "amount": 77420}]}
+
+If it shows a LUCKY FAN / LUCKY DRAW leaderboard (rows have names, no money):
+{"section_name": "LUCKY FAN", "type": "lucky", "entries": [{"rank": 1, "name": "นาย ก***", "phone": "091-079xxxx"}]}
+
+Rules:
+- Detect type from content: spender has money/amount columns, lucky has name columns.
+- Include every visible row sorted by rank ascending.
+- "phone": copy the masked number exactly as shown.
+- "amount": integer Thai baht, no commas or symbols (spender only).
+- Return ONLY the JSON object. No markdown, no explanation.`
+
+	reqBody := claudeRequest{
+		Model:     "claude-sonnet-4-6",
+		MaxTokens: 2048,
+		Messages: []claudeMessage{
+			{
+				Role: "user",
+				Content: []claudeBlock{
+					{Type: "image", Source: &claudeSource{Type: "base64", MediaType: mediaType, Data: b64}},
+					{Type: "text", Text: prompt},
+				},
+			},
+		},
+	}
+
+	bodyBytes, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBytes, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("claude API status %d: %s", resp.StatusCode, string(respBytes))
+	}
+
+	var claudeResp claudeResponse
+	if err := json.Unmarshal(respBytes, &claudeResp); err != nil || len(claudeResp.Content) == 0 {
+		return nil, fmt.Errorf("failed to parse claude response")
+	}
+
 	raw := strings.TrimSpace(claudeResp.Content[0].Text)
 	raw = strings.TrimPrefix(raw, "```json")
 	raw = strings.TrimPrefix(raw, "```")
 	raw = strings.TrimSuffix(raw, "```")
 	raw = strings.TrimSpace(raw)
 
-	// Parse Claude's JSON output
-	var extracted struct {
-		SectionName string `json:"section_name"`
-		Entries     []struct {
-			Rank   int    `json:"rank"`
-			Phone  string `json:"phone"`
-			Amount int    `json:"amount"`
-		} `json:"entries"`
+	var result struct {
+		SectionName string          `json:"section_name"`
+		Type        string          `json:"type"`
+		Entries     json.RawMessage `json:"entries"`
 	}
-	if err := json.Unmarshal([]byte(raw), &extracted); err != nil {
-		// Return raw text so caller can inspect
-		writeJSON(w, http.StatusOK, map[string]string{"raw": raw})
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse extracted JSON: %s", raw)
+	}
+
+	return &Section{Name: result.SectionName, Type: result.Type, Entries: result.Entries}, nil
+}
+
+// POST /api/extract-multi — accepts photos[] files, auto-detects section type per image
+func extractMultiHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	// Build a Section ready to drop into an Event
-	entries := make([]SpenderEntry, len(extracted.Entries))
-	for i, e := range extracted.Entries {
-		entries[i] = SpenderEntry{Rank: e.Rank, Phone: e.Phone, Amount: e.Amount}
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		writeError(w, http.StatusInternalServerError, "ANTHROPIC_API_KEY not set")
+		return
 	}
-	entriesJSON, _ := json.Marshal(entries)
 
-	section := Section{
-		Name:    extracted.SectionName,
-		Type:    "spender",
-		Entries: json.RawMessage(entriesJSON),
+	if err := r.ParseMultipartForm(128 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "failed to parse form")
+		return
+	}
+
+	fileHeaders := r.MultipartForm.File["photos"]
+	if len(fileHeaders) == 0 {
+		writeError(w, http.StatusBadRequest, "provide at least one image in 'photos' field")
+		return
+	}
+
+	type result struct {
+		section *Section
+		errMsg  string
+		name    string
+	}
+
+	results := make([]result, len(fileHeaders))
+	done := make(chan struct{}, len(fileHeaders))
+
+	for i, fh := range fileHeaders {
+		i, fh := i, fh
+		go func() {
+			defer func() { done <- struct{}{} }()
+			f, err := fh.Open()
+			if err != nil {
+				results[i] = result{name: fh.Filename, errMsg: "open error: " + err.Error()}
+				return
+			}
+			imgBytes, err := io.ReadAll(f)
+			f.Close()
+			if err != nil {
+				results[i] = result{name: fh.Filename, errMsg: "read error: " + err.Error()}
+				return
+			}
+			sec, err := callClaudeAutoSection(apiKey, imgBytes, mimeFromExt(filepath.Ext(fh.Filename)))
+			if err != nil {
+				results[i] = result{name: fh.Filename, errMsg: err.Error()}
+				return
+			}
+			results[i] = result{name: fh.Filename, section: sec}
+		}()
+	}
+
+	for range fileHeaders {
+		<-done
+	}
+
+	var sections []Section
+	var errors []string
+	for _, res := range results {
+		if res.section != nil {
+			sections = append(sections, *res.section)
+		} else if res.errMsg != "" {
+			errors = append(errors, res.name+": "+res.errMsg)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"section": section,
+		"sections": sections,
+		"errors":   errors,
 	})
 }
 
@@ -657,6 +966,11 @@ func mimeFromExt(ext string) string {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, using system env")
+		log.Println(err)
+	}
+
 	if err := loadDB(); err != nil {
 		log.Fatalf("failed to load data.json: %v", err)
 	}
@@ -667,6 +981,8 @@ func main() {
 	mux.HandleFunc("/api/events/", eventByIDHandler)
 	mux.HandleFunc("/api/stats", statsHandler)
 	mux.HandleFunc("/api/extract", extractHandler)
+	mux.HandleFunc("/api/extract-gpt", extractGPTHandler)
+	mux.HandleFunc("/api/extract-multi", extractMultiHandler)
 
 	// Serve uploaded photos
 	mux.Handle("/Photo_topspender/", http.StripPrefix("/Photo_topspender/",

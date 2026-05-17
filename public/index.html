@@ -165,13 +165,19 @@
         const bi = MEMBER_ORDER.indexOf(b.member_name);
         return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
       });
+      // statsEl.innerHTML = sorted.map(m => `
+      //   <div class="stat">
+      //     <div class="stat-label" style="color:${memberColor(m.member_name)}">${m.member_name}</div>
+      //     <div class="stat-value" style="color:${memberColor(m.member_name)}">${m.max_top1 ? baht(m.max_top1) : '—'}</div>
+      //     <div class="stat-sub">Top #1 max</div>
+      //     <div style="margin-top:6px;font-size:14px;font-weight:700;color:var(--muted)">${m.min_last ? baht(m.min_last) : '—'}</div>
+      //     <div class="stat-sub">Min last · ${m.event_count} event${m.event_count !== 1 ? 's' : ''}</div>
+      //   </div>`).join('');
       statsEl.innerHTML = sorted.map(m => `
         <div class="stat">
           <div class="stat-label" style="color:${memberColor(m.member_name)}">${m.member_name}</div>
           <div class="stat-value" style="color:${memberColor(m.member_name)}">${m.max_top1 ? baht(m.max_top1) : '—'}</div>
-          <div class="stat-sub">Top #1 max</div>
-          <div style="margin-top:6px;font-size:14px;font-weight:700;color:var(--muted)">${m.min_last ? baht(m.min_last) : '—'}</div>
-          <div class="stat-sub">Min last · ${m.event_count} event${m.event_count !== 1 ? 's' : ''}</div>
+          <div class="stat-sub">Top #1 max (${m.event_count} event${m.event_count !== 1 ? 's' : ''})</div>
         </div>`).join('');
     }
 
@@ -196,6 +202,16 @@
         const dateDisplay = ev.start_date
           ? formatDateRange(ev.start_date, ev.end_date)
           : ev.period || ev.date;
+        // const coverPhoto = ev.cover_photo
+        //   ? `<img class="card-img" src="${imageSrc(ev.cover_photo)}" alt="${ev.title}" loading="lazy">`
+        //   : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;font-size:40px">🎤</div>`;
+        // const coverHTML = `<div style="position:relative">
+        //   ${coverPhoto}
+        //   ${isPast ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">
+        //     <span style="color:#fff;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:rgba(0,0,0,.4);padding:5px 12px;border-radius:99px;border:1.5px solid rgba(255,255,255,.3)">Event Ended</span>
+        //   </div>` : ''}
+        // </div>`;
+
         const imgInner = ev.img
           ? `<img class="card-img" src="${imageSrc(ev.img)}" alt="${ev.title}" loading="lazy">`
           : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;font-size:40px">🎤</div>`;
@@ -228,7 +244,10 @@
             <div style="font-size:14px;font-weight:800;color:var(--muted);letter-spacing:-.3px">${baht(min.amount)}</div>
           </div>` : ''}
         </div>` : ''}
-        <button class="card-cta">ดู Leaderboard ทั้งหมด →</button>
+        <div style="display:flex;gap:8px">
+          <button class="card-cta" style="flex:1">ดู Leaderboard ทั้งหมด →</button>
+          ${ev.ref ? `<a class="card-cta card-cta-detail" href="${ev.ref}" target="_blank" rel="noopener" onclick="event.stopPropagation()">รายละเอียด</a>` : ''}
+        </div>
       </div>
     </div>`;
       }).join('');

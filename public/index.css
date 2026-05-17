@@ -121,8 +121,8 @@ main {
 }
 
 .stat-label {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 900;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: .5px;
@@ -130,13 +130,13 @@ main {
 }
 
 .stat-value {
-    font-size: 26px;
-    font-weight: 900;
+    font-size: 20px;
+    font-weight: 700;
     letter-spacing: -1px;
 }
 
 .stat-sub {
-    font-size: 12px;
+    font-size: 10px;
     color: var(--muted);
     margin-top: 3px;
 }
@@ -394,7 +394,6 @@ main {
 
 .card-cta {
     display: block;
-    width: 100%;
     margin-top: 12px;
     padding: 9px;
     border-radius: 8px;
@@ -411,6 +410,16 @@ main {
 .card-cta:hover {
     border-color: #aaa;
     color: var(--text);
+}
+
+.card-cta-detail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: auto;
+    text-decoration: none;
+    white-space: nowrap;
 }
 
 /* ── Loading / Empty ── */

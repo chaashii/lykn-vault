@@ -584,6 +584,11 @@
           <label>Hashtag</label>
           <input type="text" name="hashtag" id="hashtagInput" placeholder="#MELAxTUI">
         </div>
+
+        <div class="field">
+          <label>Source URL (X / Twitter)</label>
+          <input type="text" name="ref" placeholder="https://x.com/Mela_Brand/status/...">
+        </div>
       </div>
 
       <!-- Photo -->
@@ -596,20 +601,47 @@
           <img class="photo-preview" id="photoPreview" alt="preview">
         </div>
         <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Or Google Drive URL</span>
+          <span style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Result Photo URL</span>
           <input type="text" id="driveInput" placeholder="https://drive.google.com/file/d/..."
+            style="flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-family:inherit;font-size:13px;font-weight:500;outline:none">
+          <button type="button" id="extractDriveBtn" class="btn btn-primary" style="white-space:nowrap;padding:8px 14px;font-size:12px">Extract →</button>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Cover Photo URL</span>
+          <input type="text" id="coverPhotoInput" placeholder="https://drive.google.com/file/d/... (optional)"
             style="flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-family:inherit;font-size:13px;font-weight:500;outline:none">
         </div>
         <input type="hidden" name="img_url" id="imgUrlHidden">
+        <input type="hidden" name="cover_photo" id="coverPhotoHidden">
+      </div>
+
+      <!-- Extract Leaderboard Images -->
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          Extract Leaderboard Images
+          <span id="multiExtractStatus" style="font-size:11px;font-weight:700"></span>
+        </div>
+        <div class="photo-upload" id="multiUploadZone" style="min-height:80px">
+          <input type="file" id="multiPhotoInput" accept="image/*" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+          <div class="photo-upload-icon" id="multiUploadIcon">🖼️</div>
+          <div class="photo-upload-text" id="multiUploadText">Click to select images (Top Spender + Lucky Fan)</div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button type="button" id="multiExtractBtn" class="btn btn-primary" style="padding:9px 18px;font-size:13px" disabled>
+            Extract All →
+          </button>
+          <span style="font-size:12px;color:var(--muted)" id="multiFileCount"></span>
+        </div>
       </div>
 
       <!-- Top Spender -->
       <div class="card">
-        <div class="card-title">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           Top Spender Section
           &nbsp;
           <input type="text" id="sectionName" placeholder="Section name (e.g. TOP STUDIO)"
             style="width:200px;display:inline-block;padding:5px 10px;font-size:12px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);font-family:inherit;font-weight:600;outline:none">
+          <span id="extractStatus" style="font-size:11px;font-weight:700"></span>
         </div>
 
         <div class="table-wrap">
@@ -735,10 +767,23 @@
       }
     });
 
+    document.getElementById('extractDriveBtn').addEventListener('click', function () {
+      const url = document.getElementById('driveInput').value.trim();
+      if (!url) { showToast('กรอก Drive URL ก่อน', true); return; }
+      const direct = driveDirectUrl(url);
+      const fd = new FormData();
+      fd.append('img_url', direct);
+      runExtract(fd);
+    });
+
+    document.getElementById('coverPhotoInput').addEventListener('input', function () {
+      const url = this.value.trim();
+      document.getElementById('coverPhotoHidden').value = url ? driveDirectUrl(url) : '';
+    });
+
     document.getElementById('photoInput').addEventListener('change', function () {
       const file = this.files[0];
       if (!file) return;
-      // clear Drive input when file is chosen
       document.getElementById('driveInput').value = '';
       document.getElementById('imgUrlHidden').value = '';
       const prev = document.getElementById('photoPreview');
@@ -746,7 +791,41 @@
       prev.style.display = 'block';
       document.querySelector('.photo-upload-icon').style.display = 'none';
       document.querySelector('.photo-upload-text').textContent = file.name;
+      const fd = new FormData();
+      fd.append('photo', file);
+      runExtract(fd);
     });
+
+    // ── Extract & auto-fill ───────────────────────────────────────
+    async function runExtract(formData) {
+      const statusEl = document.getElementById('extractStatus');
+      statusEl.textContent = 'กำลัง Extract...';
+      statusEl.style.color = 'var(--nut)';
+      try {
+        const res = await fetch('/api/extract-gpt', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Extract failed');
+        const section = data.section;
+        if (!section) throw new Error('No section data returned');
+
+        if (section.name) document.getElementById('sectionName').value = section.name;
+
+        const entries = section.entries || [];
+        entries.forEach(e => {
+          const phoneEl = document.querySelector(`[data-sp-phone="${e.rank}"]`);
+          const amountEl = document.querySelector(`[data-sp-amount="${e.rank}"]`);
+          if (phoneEl) phoneEl.value = e.phone || '';
+          if (amountEl) amountEl.value = e.amount || '';
+        });
+
+        statusEl.textContent = `✓ ${entries.length} รายการ`;
+        statusEl.style.color = '#16a34a';
+        setTimeout(() => { statusEl.textContent = ''; }, 4000);
+      } catch (err) {
+        statusEl.textContent = '✗ ' + err.message;
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
 
     // ── Build sections JSON ───────────────────────────────────────
     function buildSections() {
@@ -809,6 +888,9 @@
         this.reset();
         document.getElementById('driveInput').value = '';
         document.getElementById('imgUrlHidden').value = '';
+        document.getElementById('coverPhotoInput').value = '';
+        document.getElementById('coverPhotoHidden').value = '';
+        document.getElementById('extractStatus').textContent = '';
         document.getElementById('photoPreview').style.display = 'none';
         document.querySelector('.photo-upload-icon').style.display = '';
         document.querySelector('.photo-upload-text').textContent = 'Click to upload result photo';
@@ -885,6 +967,97 @@
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2800);
     }
+
+    // ── Multi-image extract ───────────────────────────────────────
+    let multiFiles = [];
+
+    document.getElementById('multiPhotoInput').addEventListener('change', function () {
+      multiFiles = Array.from(this.files);
+      const btn = document.getElementById('multiExtractBtn');
+      const countEl = document.getElementById('multiFileCount');
+      const icon = document.getElementById('multiUploadIcon');
+      const text = document.getElementById('multiUploadText');
+      if (multiFiles.length) {
+        btn.disabled = false;
+        countEl.textContent = `${multiFiles.length} file${multiFiles.length > 1 ? 's' : ''} selected`;
+        icon.textContent = '✅';
+        text.textContent = multiFiles.map(f => f.name).join(', ');
+      } else {
+        btn.disabled = true;
+        countEl.textContent = '';
+        icon.textContent = '🖼️';
+        text.textContent = 'Click to select images (Top Spender + Lucky Fan)';
+      }
+    });
+
+    document.getElementById('multiExtractBtn').addEventListener('click', async function () {
+      if (!multiFiles.length) return;
+
+      const statusEl = document.getElementById('multiExtractStatus');
+      statusEl.textContent = `Extracting ${multiFiles.length} image${multiFiles.length > 1 ? 's' : ''}...`;
+      statusEl.style.color = 'var(--nut)';
+      this.disabled = true;
+
+      const fd = new FormData();
+      multiFiles.forEach(f => fd.append('photos', f));
+
+      try {
+        const res = await fetch('/api/extract-multi', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Extract failed');
+
+        const sections = data.sections || [];
+        let filledSpender = false, filledLucky = false;
+
+        sections.forEach(sec => {
+          if (sec.type === 'spender') {
+            if (sec.name) document.getElementById('sectionName').value = sec.name;
+            const entries = sec.entries || [];
+            entries.forEach(e => {
+              const phoneEl = document.querySelector(`[data-sp-phone="${e.rank}"]`);
+              const amountEl = document.querySelector(`[data-sp-amount="${e.rank}"]`);
+              if (phoneEl) phoneEl.value = e.phone || '';
+              if (amountEl) amountEl.value = e.amount || '';
+            });
+            filledSpender = true;
+          } else if (sec.type === 'lucky') {
+            const toggle = document.getElementById('luckyToggle');
+            if (!toggle.classList.contains('on')) {
+              toggle.classList.add('on');
+              document.getElementById('luckySection').style.display = 'block';
+            }
+            const entries = sec.entries || [];
+            entries.forEach(e => {
+              const nameEl = document.querySelector(`[data-lk-name="${e.rank}"]`);
+              const phoneEl = document.querySelector(`[data-lk-phone="${e.rank}"]`);
+              if (nameEl) nameEl.value = e.name || '';
+              if (phoneEl) phoneEl.value = e.phone || '';
+            });
+            filledLucky = true;
+          }
+        });
+
+        const parts = [];
+        if (filledSpender) parts.push('Top Spender');
+        if (filledLucky) parts.push('Lucky Fan');
+        if (parts.length) {
+          statusEl.textContent = `✓ Filled: ${parts.join(' + ')}`;
+          statusEl.style.color = '#16a34a';
+        } else {
+          statusEl.textContent = 'No data extracted';
+          statusEl.style.color = 'var(--muted)';
+        }
+
+        if ((data.errors || []).length) {
+          showToast(data.errors.join(', '), true);
+        }
+      } catch (err) {
+        statusEl.textContent = '✗ ' + err.message;
+        statusEl.style.color = 'var(--danger)';
+      } finally {
+        this.disabled = false;
+      }
+    });
 
     // ── Init ──────────────────────────────────────────────────────
     buildSpenderRows();
