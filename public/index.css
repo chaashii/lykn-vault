@@ -50,9 +50,9 @@ header {
 }
 
 .header-inner {
-    max-width: 1080px;
+    /* max-width: 1080px; */
     margin: 0 auto;
-    padding: 16px 24px;
+    padding: 16px 30px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -99,9 +99,9 @@ header {
 
 /* ── Main ── */
 main {
-    max-width: 1080px;
+    /* max-width: 1080px; */
     margin: 0 auto;
-    padding: 32px 24px 64px;
+    padding: 32px 30px 64px;
 }
 
 /* ── Stats ── */
@@ -182,7 +182,8 @@ main {
     color: var(--text);
 }
 
-.fb.on[data-m="all"] {
+.fb.on[data-m="all"],
+.fb.on[data-y] {
     background: var(--text);
     border-color: var(--text);
     color: #fff;
